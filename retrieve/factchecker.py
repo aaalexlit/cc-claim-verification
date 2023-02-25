@@ -1,3 +1,4 @@
+import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 
 from check_article import get_evidences_from_text
@@ -18,8 +19,9 @@ def predict_supports_or_refutes(claim_evidence_array):
             for evidence in evidences:
                 yield {"text": claim, "text_pair": evidence}
 
+    device = 0 if torch.cuda.is_available() else -1
     pipe = pipeline("text-classification", model=climate_factcheck_model,
-                    tokenizer=climate_factcheck_tokenizer, device=0)
+                    tokenizer=climate_factcheck_tokenizer, device=device)
     labels = []
     probs = []
     for out in pipe(claim_evidence_pair_data(), batch_size=64):
