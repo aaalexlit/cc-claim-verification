@@ -1,0 +1,5 @@
+    python multivers/predict.py \
+        --checkpoint_path=checkpoints/scifact.ckpt \
+        --input_file=/Users/alex.litvinov/PycharmProjects/cc-claim-verification/retrieve/claims.jsonl \
+        --corpus_file=/Users/alex.litvinov/PycharmProjects/cc-claim-verification/retrieve/corpus.jsonl \
+        --output_file=/Users/alex.litvinov/PycharmProjects/cc-claim-verification/retrieve/preds.jsonl
