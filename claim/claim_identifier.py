@@ -33,7 +33,7 @@ def get_claims_from_texts(df, id_col='id', text_col='abstract', threshold=0.7, d
     claims_df = claims_df.groupby(id_col).agg({'claims': lambda x: x.tolist()})
     return claims_df
 
-
+# TODO use pipelines for inference
 def is_claim(sentences, model=claimbuster_model, tokenizer=claimbuster_tokenizer, debug=False):
     inputs = tokenizer(sentences,
                        padding=True,
@@ -58,5 +58,7 @@ def is_claim(sentences, model=claimbuster_model, tokenizer=claimbuster_tokenizer
 def tokenize_texts_to_sentences(text):
     return sent_tokenize(text)
 
-# print(get_claims_from_text(
-#     """Increased aridity and human population have reduced tree cover in parts of the African Sahel degraded resources for local people. Yet, trends relative importance climate remain unresolved. From field measurements, aerial photos, Ikonos satellite images, we detected significant 1954-2002 density declines western 18 +/- 14% (P = 0.014, n 204) 17 13% 0.0009, 187). observations, a 1960-2000 species richness decline 21 11% 0.0028, 14) across southward shift Sahel, Sudan, Guinea zones. Multivariate analyses climate, soil, showed that temperature most significantly < 0.001) explained changes. bivariate tests observations indicated dominance precipitation, supporting attribution changes to variability. Climate change forcing variability, particularly 0.05) 1901-2002 increases precipitation decreases research areas, connects global change. This suggests roles action adaptation address ecological Sahel."""))
+
+if __name__ == "__main__":
+    print(get_claims_from_text(
+        """Increased aridity and human population have reduced tree cover in parts of the African Sahel degraded resources for local people. Yet, trends relative importance climate remain unresolved. From field measurements, aerial photos, Ikonos satellite images, we detected significant 1954-2002 density declines western 18 +/- 14% (P = 0.014, n 204) 17 13% 0.0009, 187). observations, a 1960-2000 species richness decline 21 11% 0.0028, 14) across southward shift Sahel, Sudan, Guinea zones. Multivariate analyses climate, soil, showed that temperature most significantly < 0.001) explained changes. bivariate tests observations indicated dominance precipitation, supporting attribution changes to variability. Climate change forcing variability, particularly 0.05) 1901-2002 increases precipitation decreases research areas, connects global change. This suggests roles action adaptation address ecological Sahel."""))

@@ -1,20 +1,10 @@
-import gc
-import os
-
 import numpy as np
 from multiprocessing import Pool
 import pandas as pd
 from haystack import Document
-from haystack.document_stores import FAISSDocumentStore
-from haystack.nodes import EmbeddingRetriever
+from timeit import default_timer as timer
 
-PATH_TO_FAISS = os.path.abspath("../data/faiss")
-
-if not os.path.exists(PATH_TO_FAISS):
-    os.makedirs(PATH_TO_FAISS)
-
-PATH_TO_INDEX = os.path.join(PATH_TO_FAISS, "faiss_index")
-PATH_TO_DB = os.path.join(PATH_TO_FAISS, 'faiss_document_store.db')
+import indexer_interface
 
 
 def parallelize_dataframe(df, func, n_cores=4):
@@ -49,66 +39,48 @@ def convert_openalex_abstracts_to_haystack_documents(row):
                     meta=meta_information)
 
 
-def index_docs_from_csv(filename, docs_extractor, model_name, embedding_dim):
-    for docs in docs_extractor(filename):
-        add_documents_to_faiss_index(docs, model_name, embedding_dim)
-        gc.collect()
+def read_csv_yield_haystack_documents(filename, chunk_size, start_from_row):
+    chunk_number = 1
+    for df in pd.read_csv(filename, chunksize=chunk_size, skiprows=start_from_row):
+        print(f'starting to index chunk number {chunk_number}')
+        df.fillna("", inplace=True)
+        row_dict = df.to_dict('records')
+        chunk_number += 1
+        yield [convert_openalex_abstracts_to_haystack_documents(row)
+               for row in row_dict]
 
 
-def add_documents_to_faiss_index(docs, model_name, embedding_dim):
-    print(f'Adding next {len(docs)} docs to the index')
-    doc_store = get_faiss_document_store(embedding_dim)
-    retriever = get_retriever(doc_store, model_name)
-    write_documents(docs, doc_store, retriever)
+def index_docs_from_csv(filename, docs_extractor,
+                        indexer: indexer_interface.IndexerInterface,
+                        chunk_size, start_from_row,
+                        check_climate_related=True):
+    for docs in docs_extractor(filename, chunk_size, start_from_row):
+        if check_climate_related:
+            docs = filter_climate_related(docs)
+        indexer.write_documents(docs)
 
 
-# TODO: if there's a DB but no index erase the DB
-def get_faiss_document_store(embedding_dim):
-    if os.path.exists(PATH_TO_INDEX):
-        return FAISSDocumentStore.load(index_path=PATH_TO_INDEX)
-    else:
-        return FAISSDocumentStore(
-            sql_url=f"sqlite:///{PATH_TO_DB}",
-            return_embedding=True,
-            similarity='cosine',
-            embedding_dim=embedding_dim,
-            duplicate_documents='skip'
-        )
+# TODO
+def filter_climate_related(docs):
+    return docs
 
 
-def get_retriever(document_store, model_name, progress_bar=True):
-    return EmbeddingRetriever(
-        document_store=document_store,
-        embedding_model=model_name,
-        model_format='sentence_transformers',
-        # include article title into the embedding
-        embed_meta_fields=["title"],
-        progress_bar=progress_bar
-    )
-
-
-def write_documents(docs, document_store, retriever):
-    document_store.write_documents(docs)
-
-    print('Updating embeddings ...')
-
-    document_store.update_embeddings(
-        retriever=retriever,
-        update_existing_embeddings=False
-    )
-
-    print(f'current embedding count is {document_store.get_embedding_count()}')
-    print('Saving document store')
-    document_store.save(index_path=PATH_TO_INDEX)
-
-
-def retrieve_matches_for_a_phrase(phrase, embedding_dim, model_name, top_k=10):
-    doc_store = get_faiss_document_store(embedding_dim)
-    retriever = get_retriever(doc_store, model_name, progress_bar=False)
-    return retriever.retrieve(phrase, top_k=top_k)
-
-
-def retrieve_matches_for_phrases(phrases, embedding_dim, model_name, top_k=10):
-    doc_store = get_faiss_document_store(embedding_dim)
-    retriever = get_retriever(doc_store, model_name, progress_bar=True)
-    return retriever.retrieve_batch(phrases, top_k=top_k)
+def get_abstracts_matching_claims(claims,
+                                  indexer: indexer_interface.IndexerInterface,
+                                  top_k=10, debug=False):
+    start = timer()
+    all_matches = indexer.retrieve_matches_for_phrases(claims,
+                                                       top_k=top_k)
+    if debug:
+        for claim_n, matches in enumerate(all_matches):
+            print(f"Claim:\n{claims[claim_n]}\n")
+            for i, match in enumerate(matches):
+                print(f'Evidence {i}:\n',
+                      f'Similarity: {match.score:.3f}\n'
+                      f'Quote: {match.content}\n',
+                      f'Article Title: {match.meta.get("title", "")}\n',
+                      f'DOI: {match.meta.get("doi", "")}\n',
+                      f'year: {match.meta.get("publication_year", "")}\n', )
+    end = timer()
+    print(f"Took {(end - start):.0f} seconds")
+    return all_matches
