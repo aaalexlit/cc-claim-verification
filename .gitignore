@@ -271,3 +271,4 @@ sensitive_info.py
 
 data
 /retrieve/*.jsonl
+/volumes/

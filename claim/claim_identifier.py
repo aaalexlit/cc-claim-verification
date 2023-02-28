@@ -1,5 +1,5 @@
 import pandas as pd
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 from nltk.tokenize import sent_tokenize
 import torch
 
@@ -20,7 +20,7 @@ def get_claims_from_text(text, threshold=0.7, debug=False):
             label in [1, 2] and prob > threshold]
 
 
-# TODO: needs performance improvement
+# TODO: potentially needs performance improvement
 def get_claims_from_texts(df, id_col='id', text_col='abstract', threshold=0.7, debug=False):
     df[text_col] = df[text_col].map(tokenize_texts_to_sentences)
     df = df.explode(text_col)
@@ -33,26 +33,23 @@ def get_claims_from_texts(df, id_col='id', text_col='abstract', threshold=0.7, d
     claims_df = claims_df.groupby(id_col).agg({'claims': lambda x: x.tolist()})
     return claims_df
 
-# TODO use pipelines for inference
-def is_claim(sentences, model=claimbuster_model, tokenizer=claimbuster_tokenizer, debug=False):
-    inputs = tokenizer(sentences,
-                       padding=True,
-                       truncation=True,
-                       max_length=512,
-                       return_tensors="pt")
-    model.eval()
-    with torch.no_grad():
-        outputs = model(**inputs)
-    logits = outputs.logits
-    preds = torch.softmax(logits, dim=1).max(dim=1)
-    predicted_class_ids = preds.indices.numpy()
-    probs = preds.values.numpy()
+
+def is_claim(sentences,
+             model=claimbuster_model,
+             tokenizer=claimbuster_tokenizer,
+             debug=False):
+    device = 0 if torch.cuda.is_available() else -1
+    pipe = pipeline("text-classification", model=model,
+                    tokenizer=tokenizer, device=device)
+    labels, probs = [], []
+    for out in pipe(sentences, batch_size=1):
+        labels.append(out['label'])
+        probs.append(out['score'])
     if debug:
-        predicted_labels = [model.config.id2label[class_id] for class_id in predicted_class_ids]
-        for sentence, label, prob in zip(sentences, predicted_labels, probs):
+        for sentence, label, prob in zip(sentences, labels, probs):
             print(f"{label}({prob:.3f})")
             print(sentence)
-    return predicted_class_ids, probs
+    return list(map(lambda l: model.config.label2id[l], labels)), probs
 
 
 def tokenize_texts_to_sentences(text):

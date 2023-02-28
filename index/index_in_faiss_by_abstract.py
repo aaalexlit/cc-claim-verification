@@ -32,5 +32,6 @@ def main(args):
 def get_indexer():
     return FAISSIndexer('../data/faiss', MODEL_NAME, EMBEDDING_DIM)
 
+
 if __name__ == "__main__":
     main([])
