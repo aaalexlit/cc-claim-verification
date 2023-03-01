@@ -2,3 +2,4 @@ farm-haystack[only-faiss,milvus]
 sentence-transformers
 jsonlines
 newspaper3k
+codetiming

@@ -93,7 +93,6 @@ def convert_evidences_from_phrases_to_multivers_format(text):
             }
             claims_writer.write(claim_doc)
 
-
 if __name__ == "__main__":
     get_abstracts_matching_claims(['CO2 is not the cause of our current warming trend.'],
                                   milvus_indexer,

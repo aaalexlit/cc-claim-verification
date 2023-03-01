@@ -3,6 +3,8 @@ from multiprocessing import Pool
 import pandas as pd
 from haystack import Document
 from timeit import default_timer as timer
+from claim import climate_identifier
+from codetiming import Timer
 
 import indexer_interface
 
@@ -41,7 +43,7 @@ def convert_openalex_abstracts_to_haystack_documents(row):
 
 def read_csv_yield_haystack_documents(filename, chunk_size, start_from_row):
     chunk_number = 1
-    for df in pd.read_csv(filename, chunksize=chunk_size, skiprows=start_from_row):
+    for df in pd.read_csv(filename, chunksize=chunk_size, skiprows=range(1, start_from_row)):
         print(f'starting to index chunk number {chunk_number}')
         df.fillna("", inplace=True)
         row_dict = df.to_dict('records')
@@ -60,11 +62,13 @@ def index_docs_from_csv(filename, docs_extractor,
         indexer.write_documents(docs)
 
 
-# TODO
 def filter_climate_related(docs):
-    return docs
+    abstracts = list(map(lambda doc: doc.content, docs))
+    labels, _ = climate_identifier.is_about_climate(abstracts)
+    return [doc for label, doc in zip(labels, docs) if label == 'Yes']
 
 
+@Timer(text="get_abstracts_matching_claims elapsed time: {seconds:.0f} s")
 def get_abstracts_matching_claims(claims,
                                   indexer: indexer_interface.IndexerInterface,
                                   top_k=10, debug=False):
