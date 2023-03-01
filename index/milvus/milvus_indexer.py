@@ -6,7 +6,8 @@ import os
 
 class MilvusIndexer(indexer_interface.IndexerInterface):
     def __init__(self, milvus_host, milvus_port, sql_url,
-                 recreate_index, model_name, embedding_dim) -> None:
+                 recreate_index, model_name, embedding_dim,
+                 index_type) -> None:
         self.milvus_host = milvus_host
         self.milvus_port = milvus_port
         self.sql_url = sql_url
@@ -15,6 +16,7 @@ class MilvusIndexer(indexer_interface.IndexerInterface):
                 os.makedirs(self.sql_url)
             self.sql_url = f"sqlite:///{os.path.join(self.sql_url, 'document_store.db')}"
 
+        self.index_type = index_type
         self.recreate_index = recreate_index
         self.model_name = model_name
         self.embedding_dim = embedding_dim
@@ -27,7 +29,7 @@ class MilvusIndexer(indexer_interface.IndexerInterface):
             host=self.milvus_host,
             port=self.milvus_port,
             index="cc_abstracts",
-            index_type="IVF_FLAT",
+            index_type=self.index_type,
             similarity='dot_product',
             duplicate_documents='skip',
             embedding_dim=self.embedding_dim,
