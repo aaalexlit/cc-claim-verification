@@ -1,5 +1,5 @@
+import index.sensitive_info as info
 from index import utils
-import os
 import logging
 from timeit import default_timer as timer
 
@@ -18,7 +18,7 @@ start_from_row = 0 * chunk_size
 sqlite_url = '../data/milvus'
 remote_sqlite_url = '../data/milvus/remote'
 postgres_url = "postgresql://pgadmin:pass@localhost:5432/postgres"
-remote_milvus_host = sensitive_info.zillis_milvus_host
+remote_milvus_host = info.zillis_milvus_host
 remote_milvus_port = "19537"
 
 remote_index_type = "AUTOINDEX"
@@ -28,31 +28,25 @@ local_index_type = "IVF_FLAT"
 def main(args):
     start = timer()
 
-    milvus_indexer = MilvusIndexer(
-        milvus_host=remote_milvus_host,
-        milvus_port=remote_milvus_port,
-        sql_url=remote_sqlite_url,
-        recreate_index=False,
-        model_name=MODEL_NAME,
-        embedding_dim=EMBEDDING_DIM,
-        index_type=remote_index_type)
+    milvus_indexer = get_indexer(remote=True)
     utils.index_docs_from_csv('../data/OpenAlex/csv/openalex_data_by_abstract_inf_2023-02-18_09-15-53.csv',
                               utils.read_csv_yield_haystack_documents,
                               milvus_indexer,
                               chunk_size,
-                              start_from_row)
+                              start_from_row,
+                              check_climate_related=False)
 
     end = timer()
     print(end - start)
 
 
-def get_indexer(remote=False):
+def get_indexer(remote=False, recreate_index=False):
     if remote:
         return MilvusIndexer(
             milvus_host=remote_milvus_host,
             milvus_port=remote_milvus_port,
-            sql_url=sqlite_url,
-            recreate_index=False,
+            sql_url=remote_sqlite_url,
+            recreate_index=recreate_index,
             model_name=MODEL_NAME,
             embedding_dim=EMBEDDING_DIM,
             index_type=remote_index_type
@@ -62,7 +56,7 @@ def get_indexer(remote=False):
             milvus_host="localhost",
             milvus_port=19530,
             sql_url=sqlite_url,
-            recreate_index=False,
+            recreate_index=recreate_index,
             model_name=MODEL_NAME,
             embedding_dim=EMBEDDING_DIM,
             index_type=local_index_type
