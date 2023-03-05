@@ -19,12 +19,18 @@ def predict_supports_or_refutes(claim_evidence_array):
             for evidence in evidences:
                 yield {"text": claim, "text_pair": evidence}
 
-    device = 0 if torch.cuda.is_available() else -1
+    if torch.cuda.is_available():
+        device = 0
+        batch_size = 128
+    else:
+        device = -1
+        batch_size = 1
     pipe = pipeline("text-classification", model=climate_factcheck_model,
-                    tokenizer=climate_factcheck_tokenizer, device=device)
+                    tokenizer=climate_factcheck_tokenizer, device=device,
+                    truncation=True, padding=True)
     labels = []
     probs = []
-    for out in pipe(claim_evidence_pair_data(), batch_size=64):
+    for out in pipe(claim_evidence_pair_data(), batch_size=batch_size):
         labels.append(out['label'])
         probs.append(out['score'])
     return labels, probs
