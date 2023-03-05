@@ -13,7 +13,7 @@ claimbuster_model = AutoModelForSequenceClassification.from_pretrained("lucafros
 # env_climatebert_model = AutoModelForSequenceClassification.from_pretrained("climatebert/environmental-claims")
 
 
-def get_claims_from_text(text, threshold=0.7, debug=False):
+def get_claims_from_text(text, threshold=0.5, debug=False):
     sentences = sent_tokenize(text)
     predicted_class_ids, probs = is_claim(sentences, debug=debug)
     return [sentence for sentence, label, prob in zip(sentences, predicted_class_ids, probs) if
