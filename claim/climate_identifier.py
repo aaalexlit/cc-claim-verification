@@ -9,13 +9,18 @@ climate_attention_model = RobertaForSequenceClassification.from_pretrained('krut
 
 @Timer(text="Is climate related elapsed time: {seconds:.0f} s")
 def is_about_climate(texts):
-    device = 0 if torch.cuda.is_available() else -1
+    if torch.cuda.is_available():
+        device = 0
+        batch_size = 128
+    else:
+        device = -1
+        batch_size = 1
     pipe = pipeline("text-classification", model=climate_attention_model,
                     tokenizer=climatebert_tokenizer, device=device,
                     truncation=True, padding=True)
     labels = []
     probs = []
-    for out in pipe(texts, batch_size=64):
+    for out in pipe(texts, batch_size=batch_size):
         labels.append(out['label'])
         probs.append(out['score'])
     return labels, probs
