@@ -7,8 +7,9 @@ from indexer_interface import IndexerInterface
 
 class FAISSIndexer(IndexerInterface):
     def __init__(self, path_to_index_dir,
-                 model_name, embedding_dim
-                 , path_to_postgres=None) -> None:
+                 model_name, embedding_dim,
+                 similarity_measure,
+                 path_to_postgres=None) -> None:
         self.path_to_index_dir = path_to_index_dir
         # our db is postgres, only need to set path to faiss index
         if path_to_postgres:
@@ -19,6 +20,7 @@ class FAISSIndexer(IndexerInterface):
             self._set_path_to_index_and_db()
         self.embedding_dim = embedding_dim
         self.model_name = model_name
+        self.similarity_measure = similarity_measure
         self.document_store = self._init_document_store()
         self.retriever = self._init_retriever()
 
@@ -38,7 +40,7 @@ class FAISSIndexer(IndexerInterface):
             return FAISSDocumentStore(
                 sql_url=self.path_to_db,
                 return_embedding=True,
-                similarity='cosine',
+                similarity=self.similarity_measure,
                 embedding_dim=self.embedding_dim,
                 duplicate_documents='skip'
             )

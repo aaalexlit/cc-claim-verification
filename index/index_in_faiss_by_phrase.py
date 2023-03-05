@@ -17,6 +17,8 @@ MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2'
 # embedding size used by all-MiniLM-L6-v2
 EMBEDDING_DIM = 384
 
+SIMILARITY = "cosine"
+
 chunk_size = 20
 start_from_row = 0 * chunk_size
 
@@ -41,7 +43,7 @@ def convert_abstracts_from_openalex_to_haystack_docs(filename, chunk_size, start
 def main(args):
     start = timer()
 
-    faiss_indexer = FAISSIndexer('../data/faiss/claim_phrases_test', MODEL_NAME, EMBEDDING_DIM)
+    faiss_indexer = FAISSIndexer('../data/faiss/claim_phrases_test', MODEL_NAME, EMBEDDING_DIM, SIMILARITY)
 
     utils.index_docs_from_csv('../data/OpenAlex/csv/openalex_data_by_title_inf_2023-02-18_06-26-29.csv',
                               convert_abstracts_from_openalex_to_haystack_docs,
