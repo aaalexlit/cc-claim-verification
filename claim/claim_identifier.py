@@ -14,7 +14,7 @@ claimbuster_model = AutoModelForSequenceClassification.from_pretrained("lucafros
 
 
 def get_claims_from_text(text, threshold=0.7, debug=False):
-    sentences = tokenize_texts_to_sentences(text)
+    sentences = sent_tokenize(text)
     predicted_class_ids, probs = is_claim(sentences, debug=debug)
     return [sentence for sentence, label, prob in zip(sentences, predicted_class_ids, probs) if
             label in [1, 2] and prob > threshold]
@@ -22,7 +22,7 @@ def get_claims_from_text(text, threshold=0.7, debug=False):
 
 # TODO: potentially needs performance improvement
 def get_claims_from_texts(df, id_col='id', text_col='abstract', threshold=0.7, debug=False):
-    df[text_col] = df[text_col].map(tokenize_texts_to_sentences)
+    df[text_col] = df[text_col].map(sent_tokenize)
     df = df.explode(text_col)
     sentences = df[text_col].tolist()
     ids = df[id_col].tolist()
@@ -50,10 +50,6 @@ def is_claim(sentences,
             print(f"{label}({prob:.3f})")
             print(sentence)
     return list(map(lambda l: model.config.label2id[l], labels)), probs
-
-
-def tokenize_texts_to_sentences(text):
-    return sent_tokenize(text)
 
 
 if __name__ == "__main__":

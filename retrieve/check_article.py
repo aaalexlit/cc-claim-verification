@@ -1,22 +1,24 @@
 from collections import defaultdict
 
 import jsonlines
+from nltk import sent_tokenize
 
-import claim_identifier
-import index.index_in_faiss_by_abstract
 import index_in_faiss_by_abstract
 import index_in_milvus_by_abstract
-from claim_identifier import get_claims_from_text
+from claim.claim_identifier import get_claims_from_text
 from index.utils import get_abstracts_matching_claims
 from utils import get_text_from_url
+from index.utils import filter_climate_related
 
 faiss_indexer = index_in_faiss_by_abstract.get_indexer()
-milvus_indexer = index_in_milvus_by_abstract.get_indexer()
 
 
 def get_evidences_from_text(text, debug=False):
     if text.startswith('http'):
         text = get_text_from_url(text)
+    if not filter_climate_related([text]):
+        print("The text is not climate related")
+        return []
     claims_from_text = get_claims_from_text(text)
     res = []
     for claim in claims_from_text:
@@ -34,12 +36,11 @@ def get_evidences_from_text(text, debug=False):
 
 
 # https://github.com/dwadden/multivers/blob/main/doc/data.md
-def convert_evidences_from_abstracts_to_multivers_format(text):
+def convert_evidences_from_abstracts_to_multivers_format(text, indexer):
     if text.startswith('http'):
         text = get_text_from_url(text)
     claims = get_claims_from_text(text, threshold=0.5)
-    evidence_abstracts = index.index_in_faiss_by_abstract \
-        .get_abstracts_matching_claims(claims, top_k=30)
+    evidence_abstracts = get_abstracts_matching_claims(claims, indexer, top_k=30)
     with jsonlines.open('claims_1.jsonl', 'w') as claims_writer, \
             jsonlines.open('corpus_1.jsonl', 'w') as corpus_writer:
         doc_id = 0
@@ -50,7 +51,7 @@ def convert_evidences_from_abstracts_to_multivers_format(text):
                 evidence_abstract = {
                     'doc_id': doc_id,
                     'title': match.meta.get("title", ""),
-                    'abstract': claim_identifier.tokenize_texts_to_sentences(match.content)
+                    'abstract': sent_tokenize(match.content)
                 }
                 corpus_writer.write(evidence_abstract)
                 doc_ids.append(doc_id)
@@ -93,11 +94,16 @@ def convert_evidences_from_phrases_to_multivers_format(text):
             }
             claims_writer.write(claim_doc)
 
+
 if __name__ == "__main__":
-    get_abstracts_matching_claims(['CO2 is not the cause of our current warming trend.'],
-                                  milvus_indexer,
-                                  debug=True)
-    # convert_evidences_from_abstracts_to_multivers_format("https://www.nationalgeographic.com/environment/article/amazon-rainforest-now-appears-to-be-contributing-to-climate-change")
+    milvus_indexer = index_in_milvus_by_abstract.get_indexer(remote=True)
+    get_abstracts_matching_claims(
+        ["Rain now falls in massive bursts more frequently than it once did, triggering record floods.",
+         "CO2 is not the cause of our current warming trend."],
+        milvus_indexer,
+        debug=True)
+    # convert_evidences_from_abstracts_to_multivers_format("https://www.nationalgeographic.com/environment/article/amazon-rainforest-now-appears-to-be-contributing-to-climate-change",
+    #                                                      indexer=milvus_indexer)
     # convert_evidences_from_abstracts_to_multivers_format(
     #     """CO2 is not the cause of our current warming trend.
     #     Arctic sea ice has expanded in recent years.
