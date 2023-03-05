@@ -24,7 +24,7 @@ start_from_row = 0 * chunk_size
 def convert_abstracts_from_openalex_to_haystack_docs(filename, chunk_size, start_from_row):
     id_col = 'id'
     chunk_number = 1
-    for df in pd.read_csv(filename, chunksize=chunk_size, skiprows=start_from_row):
+    for df in pd.read_csv(filename, chunksize=chunk_size, skiprows=range(1, start_from_row)):
         print(f'starting to index chunk number {chunk_number}')
         df.fillna("", inplace=True)
         claims_df = claim_identifier.get_claims_from_texts(df[[id_col, 'abstract']])
