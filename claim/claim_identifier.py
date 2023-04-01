@@ -38,11 +38,16 @@ def is_claim(sentences,
              model=claimbuster_model,
              tokenizer=claimbuster_tokenizer,
              debug=False):
-    device = 0 if torch.cuda.is_available() else -1
+    if torch.cuda.is_available():
+        device = 0
+        batch_size = 128
+    else:
+        device = -1
+        batch_size = 1
     pipe = pipeline("text-classification", model=model,
                     tokenizer=tokenizer, device=device)
     labels, probs = [], []
-    for out in pipe(sentences, batch_size=1):
+    for out in pipe(sentences, batch_size=batch_size):
         labels.append(out['label'])
         probs.append(out['score'])
     if debug:
